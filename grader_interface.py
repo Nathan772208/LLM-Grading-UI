@@ -2,52 +2,47 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 import re
+import gspread
+from google.oauth2.service_account import Credentials
 
-DB_PATH = "human_eval.db"
-REFERENCE_FILE = "2802_quiz3_expert.txt"
+# Load credentials from st.secrets
+credentials = {
+    "type": st.secrets["gspread"]["type"],
+    "project_id": st.secrets["gspread"]["project_id"],
+    "private_key_id": st.secrets["gspread"]["private_key_id"],
+    "private_key": st.secrets["gspread"]["private_key"],
+    "client_email": st.secrets["gspread"]["client_email"],
+    "client_id": st.secrets["gspread"]["client_id"],
+    "token_uri": st.secrets["gspread"]["token_uri"]
+}
 
+# Authenticate with Google
+scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+credentials = Credentials.from_service_account_info(credentials, scopes=scopes)
+gc = gspread.authorize(credentials)
+
+# Open the Google Sheet
+sh = gc.open("Human Feedback Database Spread Sheet")  # Replace with your actual sheet name
+worksheet = sh.sheet1  # Replace with your actual worksheet
+
+# Load data from the worksheet
 def load_data():
-    conn = sqlite3.connect(DB_PATH)
-    df = pd.read_sql("SELECT rowid, * FROM human_eval;", conn)
-    conn.close()
+    data = worksheet.get_all_records()
+    df = pd.DataFrame(data)
     return df
 
-def save_update(rowid, rubric_q1, rubric_q2, notes, fb_q1, fb_q2, fb_combined):
-    conn = sqlite3.connect(DB_PATH)
-    query = """
-        UPDATE human_eval
-        SET rubric_score_q1 = ?, rubric_score_q2 = ?, human_notes = ?,
-            feedback_q1 = ?, feedback_q2 = ?, combined_feedback = ?
-        WHERE rowid = ?
-    """
-    conn.execute(query, (rubric_q1, rubric_q2, notes, fb_q1, fb_q2, fb_combined, rowid))
-    conn.commit()
-    conn.close()
-
-def load_reference_sections(file_path):
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        # Extract quoted question and answer strings only
-        questions = re.findall(r'pdf\.multi_cell\(0, 10, "(- Question 1:.*?)"\)', content, re.DOTALL)
-        questions += re.findall(r'pdf\.multi_cell\(0, 10, "(- Question 2:.*?)"\)', content, re.DOTALL)
-
-        answers = re.findall(r'pdf\.multi_cell\(0, 10, "(- Reference Answer to Question 1:.*?)"\)', content, re.DOTALL)
-        answers += re.findall(r'pdf\.multi_cell\(0, 10, "(- Reference Answer to Question 2:.*?)"\)', content, re.DOTALL)
-
-        questions_text = "\n\n".join(q.replace("- ", "") for q in questions)
-        answers_text = "\n\n".join(a.replace("- ", "") for a in answers)
-
-        return questions_text.strip(), answers_text.strip()
-
-    except Exception as e:
-        return "Error loading questions", f"Error loading answers: {e}"
+# Save updates to the worksheet
+def save_update(row_index, rubric_q1, rubric_q2, notes, fb_q1, fb_q2, fb_combined):
+    worksheet.update_cell(row_index + 2, df.columns.get_loc("rubric_score_q1") + 1, rubric_q1)
+    worksheet.update_cell(row_index + 2, df.columns.get_loc("rubric_score_q2") + 1, rubric_q2)
+    worksheet.update_cell(row_index + 2, df.columns.get_loc("human_notes") + 1, notes)
+    worksheet.update_cell(row_index + 2, df.columns.get_loc("feedback_q1") + 1, fb_q1)
+    worksheet.update_cell(row_index + 2, df.columns.get_loc("feedback_q2") + 1, fb_q2)
+    worksheet.update_cell(row_index + 2, df.columns.get_loc("combined_feedback") + 1, fb_combined)
 
 # Load and prepare data
 df = load_data()
 options = df.to_dict("records")
-questions_text, answers_text = load_reference_sections(REFERENCE_FILE)
 
 # Helper to detect truly "filled" strings
 def is_filled(series):
@@ -83,12 +78,6 @@ st.title("LLM Feedback Grader Interface")
 selected = st.selectbox("Select a student response:", options,
                         format_func=lambda x: f"Student ID {x['student_id']}")
 
-with st.expander("📋 Quiz Questions"):
-    st.text_area("Questions", questions_text, height=300, disabled=True)
-
-with st.expander("✅ Expert Reference Answers"):
-    st.text_area("Expert Answers", answers_text, height=300, disabled=True)
-
 if selected:
     st.subheader("Student Responses")
     st.text_area("Response to Question 1", selected['student_response_q1'], disabled=True, height=150)
@@ -110,6 +99,6 @@ if selected:
     notes = st.text_area("How accurate was the LLM in providing feedback for the questions", value=selected['human_notes'] or "", height=100)
 
     if st.button("Save Changes"):
-        save_update(selected['rowid'], score_q1, score_q2, notes, fb_q1, fb_q2, fb_combined)
+        row_index = df.index[df['student_id'] == selected['student_id']].tolist()[0]
+        save_update(row_index, score_q1, score_q2, notes, fb_q1, fb_q2, fb_combined)
         st.success("Changes saved!")
-
