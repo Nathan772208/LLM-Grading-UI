@@ -1,0 +1,15 @@
+# Questions Section
+    pdf.cell(0, 10, "1. Questions:", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(5)
+    pdf.multi_cell(0, 10, "- Question 1: Consider the two plots shown below. One plot shows the variation of Cp over the normalized chord (x/c) and the other plot shows the variation of lift coefficient along the distance from the root of a wing. A pressure distribution that looks like Plot A would create a distribution of lift coefficient that looks like Plot A. True or False? Explain why.")
+    pdf.ln(5)
+    pdf.multi_cell(0, 10, "- Question 2: Consider the wiffle tree dimensions provided below. Based on these dimensions, the load distribution produced by the wiffle tree will match the expected loading on the spar (higher loads toward the root, decreasing toward the tip). True or False? Explain why.")
+    pdf.ln(10)
+
+    # Reference Responses Section
+    pdf.cell(0, 10, "2. Reference Responses:", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(5)
+    pdf.multi_cell(0, 10, "- Reference Answer to Question 1: False. The coefficient of pressure (Cp) plot labeled A corresponds to a greater magnitude of negative pressure, leading to a higher lift coefficient (Cl) than the plot labeled B. In a typical wing, the lift distribution is higher near the root and decreases toward the tip. However, the labels A and B on the Cl vs distance from root plot are incorrectly assigned based on the given Cp distributions. The integrated area under the Cp versus x/c plot results in a higher lift coefficient, and the labels are inconsistent with the expected distribution.")
+    pdf.ln(5)
+    pdf.multi_cell(0, 10, "- Reference Answer to Question 2: False. The wiffle tree dimensions provided would result in a loading scheme where the load increases toward the tip of the spar, rather than being greater at the root and decreasing toward the tip as expected for a trapezoidal load distribution. In this activity, the goal is to have more load near the root to simulate realistic aerodynamic loading on a wing, but the provided dimensions lead to a much different, incorrect load distribution.")
+    pdf.ln(10)
