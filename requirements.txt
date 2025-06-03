@@ -1,3 +1,2 @@
 streamlit
 pandas
-sqlite3  # sometimes not needed, but include for clarity
